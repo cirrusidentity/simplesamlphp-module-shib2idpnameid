@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SimpleSAML\Module\shib2idpnameid\Auth\Process;
 
 use DOMDocument;
@@ -22,20 +24,34 @@ class PersistentNameID extends BaseNameIDGenerator
      *
      * @var string
      */
-    private $attribute;
+    private string $attribute;
+
+    private Config $utilsConfig;
 
     /**
      * Initialize this filter, parse configuration.
      *
-     * @param array $config   Configuration information about this filter.
+     * @param array{
+     *          nameId: bool,
+     *          attribute: string,
+     *          attributename?: string
+     * } $config
+     *
+     * Description:
+     * - `nameId` (bool): Whether or not to generate a NameID.
+     * - `attribute` (string): Attribute containing the unique identifier of the user.
+     * - `attributename` (optional, string): Attribute name to hold the generated eduPersonTargetedID.
+     *
      * @param mixed $reserved For future use.
+     * @throws Exception
      */
-    public function __construct($config, $reserved)
+
+    public function __construct(array $config, $reserved)
     {
         parent::__construct($config, $reserved);
-        assert(is_array($config));
 
         $this->format = Constants::NAMEID_PERSISTENT;
+        $this->utilsConfig = new Config();
 
         if (!isset($config['attribute'])) {
             throw new Exception('PersistentNameID: Missing required option \'attribute\'.');
@@ -47,39 +63,63 @@ class PersistentNameID extends BaseNameIDGenerator
      * Get the NameID value.
      * Calculates a shib style targeted id and set eduPersonTargetedId
      * @param array $state The request state.
-     * @return null Always returns null
+     * @return string|null
+     * @throws \DOMException
      */
-    protected function getValue(array &$state)
+    protected function getValue(array &$state): ?string
     {
         if (!isset($state['Destination']['entityid'])) {
             Logger::warning('No SP entity ID - not generating persistent NameID.');
 
-            return;
+            return null;
         }
+        /** @var string $spEntityId */
         $spEntityId = $state['Destination']['entityid'];
 
         if (!isset($state['Source']['entityid'])) {
             Logger::warning('No IdP entity ID - not generating persistent NameID.');
-            return;
+            return null;
         }
+        /** @var string $idpEntityId */
         $idpEntityId = $state['Source']['entityid'];
 
-        if (!isset($state['Attributes'][$this->attribute]) || count($state['Attributes'][$this->attribute]) === 0) {
-            Logger::warning('Missing attribute '.var_export($this->attribute, true).' on user - not generating persistent NameID.');
-
-            return;
+        if (
+            !isset($state['Attributes'][$this->attribute])
+            || (is_array($state['Attributes'][$this->attribute]) && count($state['Attributes'][$this->attribute]) === 0)
+        ) {
+            Logger::warning(
+                'Missing attribute '
+                . var_export($this->attribute, true)
+                . ' on user - not generating persistent NameID.',
+            );
+            return null;
         }
-        if (count($state['Attributes'][$this->attribute]) > 1) {
-            Logger::warning('More than one value in attribute '.var_export($this->attribute, true).' on user - not generating persistent NameID.');
+        /** @var array<int,string>|array<string,string> $attributeValue */
+        $attributeValue = (array)$state['Attributes'][$this->attribute];
 
-            return;
+        if (count($attributeValue) > 1) {
+            Logger::warning(
+                'More than one value in attribute '
+                . var_export($this->attribute, true)
+                . ' on user - not generating persistent NameID.',
+            );
+
+            return null;
         }
-        $uid = array_values($state['Attributes'][$this->attribute]); /* Just in case the first index is no longer 0. */
-        $uid = $uid[0];
+        $firstKey = \array_key_first($attributeValue);
+        if ($firstKey === null) {
+            Logger::warning(
+                'Unexpected null key in the attribute values for attribute '
+                . var_export($this->attribute, true)
+                . ' - not generating persistent NameID.',
+            );
+            return null;
+        }
+        $uid = $attributeValue[$firstKey];
 
-        $secretSalt = Config::getSecretSalt();
+        $secretSalt = $this->utilsConfig->getSecretSalt();
 
-        $uidData = $spEntityId.'!'.$uid.'!'.$secretSalt;
+        $uidData = $spEntityId . '!' . $uid . '!' . $secretSalt;
         $uid = base64_encode(hash('sha1', $uidData, true));
 
 
@@ -95,9 +135,13 @@ class PersistentNameID extends BaseNameIDGenerator
         $doc->appendChild($root);
 
         $nameId->toXML($root);
-        $uid = $doc->saveXML($root->firstChild);
+        $uid2NameId = $doc->saveXML($root->firstChild);
 
-        $state['Attributes']['eduPersonTargetedID'] = array($uid);
-        return null;
+        // Fixes psalm MixedArrayAssignment issue
+        if (!isset($state['Attributes']) || !is_array($state['Attributes'])) {
+            $state['Attributes'] = [];
+        }
+        $state['Attributes']['eduPersonTargetedID'] = [$uid2NameId];
+        return $uid;
     }
 }

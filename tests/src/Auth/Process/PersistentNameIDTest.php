@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
+namespace Test\SimpleSAML;
+
 use PHPUnit\Framework\TestCase;
 use SimpleSAML\Module\shib2idpnameid\Auth\Process\PersistentNameID;
 
 class PersistentNameIDTest extends TestCase
 {
-
-    public function testPersistentNameID() {
+    public function testPersistentNameID()
+    {
         $config = [
           'attribute' => 'uid'
         ];
@@ -29,8 +33,9 @@ class PersistentNameIDTest extends TestCase
         $proc->process($state);
 
         $this->assertArrayHasKey('eduPersonTargetedID', $state['Attributes']);
+
+        // phpcs:ignore Generic.Files.LineLength.TooLong -- This line intentionally exceeds the length limit
         $expectedValue = '<saml:NameID xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" NameQualifier="https://idp.example.edu/shibboleth" SPNameQualifier="https://somesp.edugain.example.edu/sp" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">D+oyFgppbxIm1ojPsqrhpyW8Gdg=</saml:NameID>';
         $this->assertEquals($expectedValue, $state['Attributes']['eduPersonTargetedID'][0]);
     }
-
 }
