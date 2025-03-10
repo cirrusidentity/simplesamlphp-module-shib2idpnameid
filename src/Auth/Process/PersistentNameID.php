@@ -26,6 +26,10 @@ class PersistentNameID extends BaseNameIDGenerator
      */
     private string $attribute;
 
+    /** @var string $toAttribute */
+    private string $toAttribute;
+
+    /** @var Config */
     private Config $utilsConfig;
 
     /**
@@ -57,6 +61,7 @@ class PersistentNameID extends BaseNameIDGenerator
             throw new Exception('PersistentNameID: Missing required option \'attribute\'.');
         }
         $this->attribute = $config['attribute'];
+        $this->toAttribute = $config['attributename'] ?? 'eduPersonTargetedID';
     }
 
     /**
@@ -141,7 +146,7 @@ class PersistentNameID extends BaseNameIDGenerator
         if (!isset($state['Attributes']) || !is_array($state['Attributes'])) {
             $state['Attributes'] = [];
         }
-        $state['Attributes']['eduPersonTargetedID'] = [$uid2NameId];
+        $state['Attributes'][$this->toAttribute] = [$uid2NameId];
         return $uid;
     }
 }

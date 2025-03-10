@@ -24,7 +24,7 @@ class PersistentNameID2TargetedID extends ProcessingFilter
     private string $attribute;
 
     /**
-     * Whether we should insert it as an saml:NameID element.
+     * Whether we should insert it as a saml:NameID element.
      *
      * @var bool
      */
@@ -40,7 +40,7 @@ class PersistentNameID2TargetedID extends ProcessingFilter
      * } $config
      *
      * Description:
-     * - `nameId` (bool): Whether or not to generate a NameID.
+     * - `nameId` (bool): Whether to generate a NameID.
      * - `attribute` (string): Attribute containing the unique identifier of the user.
      * - `attributename` (optional, string): Attribute name to hold the generated eduPersonTargetedID.
      *
