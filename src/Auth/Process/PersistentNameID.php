@@ -142,10 +142,7 @@ class PersistentNameID extends BaseNameIDGenerator
         $nameId->toXML($root);
         $uid2NameId = $doc->saveXML($root->firstChild);
 
-        // Fixes psalm MixedArrayAssignment issue
-        if (!isset($state['Attributes']) || !is_array($state['Attributes'])) {
-            $state['Attributes'] = [];
-        }
+        /** @psalm-suppress MixedArrayAssignment */
         $state['Attributes'][$this->toAttribute] = [$uid2NameId];
         return $uid;
     }

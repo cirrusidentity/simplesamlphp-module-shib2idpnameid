@@ -71,10 +71,7 @@ class PersistentNameID2TargetedID extends ProcessingFilter
         $nameID = $state['saml:NameID'][Constants::NAMEID_PERSISTENT];
         $value = $this->nameId ? $nameID : $nameID->getValue();
 
-        // // Fixes psalm MixedArrayAssignment issue
-        if (!isset($state['Attributes']) || !is_array($state['Attributes'])) {
-            $state['Attributes'] = [];
-        }
+        /** @psalm-suppress MixedArrayAssignment */
         $state['Attributes'][$this->attribute] = [$value];
     }
 }
