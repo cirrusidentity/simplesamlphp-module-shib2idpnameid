@@ -9,7 +9,6 @@ use SAML2\Constants;
 use SAML2\XML\saml\NameID;
 use SimpleSAML\Error\Exception;
 use SimpleSAML\Module\shib2idpnameid\Auth\Process\PersistentNameID2TargetedID;
-use SimpleSAML\Module\shib2idpnameid\Auth\Process\PersistentNameID;
 
 class PersistentNameID2TargetedIDTest extends TestCase
 {
@@ -20,6 +19,9 @@ class PersistentNameID2TargetedIDTest extends TestCase
     {
         $config = [
             'attribute' => 'uid',
+        ];
+        $sspPersistentNameIdConfig = [
+            'identifyingAttribute' => 'uid'
         ];
         $proc = new PersistentNameID2TargetedID($config, null);
 
@@ -37,7 +39,11 @@ class PersistentNameID2TargetedIDTest extends TestCase
                 ]
         ];
 
-        $standardPersistentAuthProc = new PersistentNameID($config, null);
+        // note: test use's SSP's PersistentNameID (not this module's version).
+        $standardPersistentAuthProc = new \SimpleSAML\Module\saml\Auth\Process\PersistentNameID(
+            $sspPersistentNameIdConfig,
+            null
+        );
 
         // set a name ID to use in our test
         $standardPersistentAuthProc->process($state);
@@ -47,7 +53,7 @@ class PersistentNameID2TargetedIDTest extends TestCase
 
         $expectedValue = new NameID();
         $expectedValue->setFormat('urn:oasis:names:tc:SAML:2.0:nameid-format:persistent');
-        $expectedValue->setValue('D+oyFgppbxIm1ojPsqrhpyW8Gdg=');
+        $expectedValue->setValue('fed3500b21a7f41a0c29f6e361b31794bb185b10');
         $this->assertEquals($expectedValue, $state['Attributes']['uid'][0]);
     }
 }
