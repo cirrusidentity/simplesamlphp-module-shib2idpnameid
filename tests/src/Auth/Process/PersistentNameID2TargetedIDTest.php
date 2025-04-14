@@ -9,6 +9,7 @@ use SAML2\Constants;
 use SAML2\XML\saml\NameID;
 use SimpleSAML\Error\Exception;
 use SimpleSAML\Module\shib2idpnameid\Auth\Process\PersistentNameID2TargetedID;
+use SimpleSAML\Module\saml\Auth\Process\PersistentNameID;
 
 class PersistentNameID2TargetedIDTest extends TestCase
 {
@@ -19,9 +20,6 @@ class PersistentNameID2TargetedIDTest extends TestCase
     {
         $config = [
             'attribute' => 'uid',
-        ];
-        $sspPersistentNameIdConfig = [
-            'identifyingAttribute' => 'uid'
         ];
         $proc = new PersistentNameID2TargetedID($config, null);
 
@@ -39,11 +37,11 @@ class PersistentNameID2TargetedIDTest extends TestCase
                 ]
         ];
 
-        // note: test use's SSP's PersistentNameID (not this module's version).
-        $standardPersistentAuthProc = new \SimpleSAML\Module\saml\Auth\Process\PersistentNameID(
-            $sspPersistentNameIdConfig,
-            null
-        );
+        $sspPersistentNameIdConfig = [
+            'identifyingAttribute' => 'uid'
+        ];
+
+        $standardPersistentAuthProc = new PersistentNameID($sspPersistentNameIdConfig, null);
 
         // set a name ID to use in our test
         $standardPersistentAuthProc->process($state);
