@@ -15,9 +15,46 @@
         }
     ],
     "require": {
-        "simplesamlphp/composer-module-installer": "^1.1"
+        "simplesamlphp/composer-module-installer": "^1.1",
+        "simplesamlphp/simplesamlphp": "^v2.3"
     },
     "require-dev": {
-        "phpunit/phpunit": "^8.5"
+        "simplesamlphp/simplesamlphp-test-framework": "^1.7",
+        "phpunit/phpunit": "^10",
+        "vimeo/psalm": "^5",
+        "squizlabs/php_codesniffer": "^3.7",
+        "friendsofphp/php-cs-fixer": "^3",
+        "rector/rector": "^0.18.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "SimpleSAML\\Module\\authoauth2\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Test\\SimpleSAML\\": "tests/src/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "simplesamlphp/composer-module-installer": true,
+            "dealerdirect/phpcodesniffer-composer-installer": false,
+            "simplesamlphp/composer-xmlprovider-installer": false,
+            "phpstan/extension-installer": true
+        }
+    },
+    "scripts": {
+        "pre-commit": [
+            "vendor/bin/phpunit --no-coverage --testdox",
+            "vendor/bin/phpcs -p",
+            "vendor/bin/psalm --no-cache"
+        ],
+        "tests": [
+            "vendor/bin/phpunit --no-coverage"
+        ],
+        "fix-cs": [
+            "php vendor/bin/phpcbf"
+        ]
     }
 }

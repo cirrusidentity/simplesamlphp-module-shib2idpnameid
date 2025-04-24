@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<phpunit bootstrap="./tests/bootstrap.php">
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         colors="true"
+         bootstrap="./tests/bootstrap.php"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+         cacheDirectory="./build/phpunit-cache"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         backupGlobals="false"
+>
     <testsuites>
         <testsuite name="The project's test suite">
-            <directory>./vendor/simplesamlphp/simplesamlphp-test-framework/src</directory>
             <directory>./tests</directory>
         </testsuite>
     </testsuites>
-    <filter>
-        <whitelist processUncoveredFilesFromWhitelist="true">
-            <directory suffix=".php">./lib</directory>
-        </whitelist>
-    </filter>
 </phpunit>

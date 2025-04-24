@@ -13,7 +13,8 @@ $config = [
     ],
 
     'module.enable' => [
-        'exampleauth' => true
+        'exampleauth' => true,
+        'shib2idpnameid' => true,
     ],
 
     'debug' => true,

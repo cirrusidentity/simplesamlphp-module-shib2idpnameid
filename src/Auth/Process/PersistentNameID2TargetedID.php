@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SimpleSAML\Module\shib2idpnameid\Auth\Process;
 
 use SAML2\Constants;
@@ -19,37 +21,38 @@ class PersistentNameID2TargetedID extends ProcessingFilter
      *
      * @var string
      */
-    private $attribute;
+    private string $attribute;
 
     /**
-     * Whether we should insert it as an saml:NameID element.
+     * Whether we should insert it as a saml:NameID element.
      *
      * @var bool
      */
-    private $nameId;
+    private bool $nameId;
 
     /**
      * Initialize this filter, parse configuration.
      *
-     * @param array $config   Configuration information about this filter.
+     * @param array{
+     *          nameId: bool,
+     *          attribute: string,
+     *          attributename?: string
+     * } $config
+     *
+     * Description:
+     * - `nameId` (bool): Whether to generate a NameID.
+     * - `attribute` (string): Attribute containing the unique identifier of the user.
+     * - `attributename` (optional, string): Attribute name to hold the generated eduPersonTargetedID.
+     *
      * @param mixed $reserved For future use.
      */
-    public function __construct($config, $reserved)
+    public function __construct(array $config, $reserved)
     {
         parent::__construct($config, $reserved);
-        assert(is_array($config));
 
-        if (isset($config['attribute'])) {
-            $this->attribute = (string) $config['attribute'];
-        } else {
-            $this->attribute = 'eduPersonTargetedID';
-        }
+        $this->attribute = isset($config['attribute']) ? (string)$config['attribute'] : 'eduPersonTargetedID';
 
-        if (isset($config['nameId'])) {
-            $this->nameId = (bool) $config['nameId'];
-        } else {
-            $this->nameId = true;
-        }
+        $this->nameId = !isset($config['nameId']) || $config['nameId'];
     }
 
     /**
@@ -57,10 +60,8 @@ class PersistentNameID2TargetedID extends ProcessingFilter
      *
      * @param array &$state The request state.
      */
-    public function process(&$state)
+    public function process(array &$state): void
     {
-        assert(is_array($state));
-
         if (!isset($state['saml:NameID'][Constants::NAMEID_PERSISTENT])) {
             Logger::warning('Unable to generate eduPersonTargetedID because no persistent NameID was available.');
             return;
@@ -68,13 +69,9 @@ class PersistentNameID2TargetedID extends ProcessingFilter
 
         /** @var NameID $nameID */
         $nameID = $state['saml:NameID'][Constants::NAMEID_PERSISTENT];
+        $value = $this->nameId ? $nameID : $nameID->getValue();
 
-        if ($this->nameId) {
-            $value = $nameID;
-        } else {
-            $value = $nameID->getValue();
-        }
-
-        $state['Attributes'][$this->attribute] = array($value);
+        /** @psalm-suppress MixedArrayAssignment */
+        $state['Attributes'][$this->attribute] = [$value];
     }
 }
