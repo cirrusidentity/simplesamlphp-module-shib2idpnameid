@@ -7,10 +7,22 @@
          displayDetailsOnTestsThatTriggerWarnings="true"
          displayDetailsOnTestsThatTriggerDeprecations="true"
          backupGlobals="false"
+         failOnWarning="false"
 >
     <testsuites>
         <testsuite name="The project's test suite">
             <directory>./tests</directory>
         </testsuite>
     </testsuites>
+
+    <coverage includeUncoveredFiles="true">
+        <include>
+            <directory>./src</directory>
+        </include>
+        <report>
+            <cobertura outputFile="build/logs/cobertura.xml"/>
+            <clover outputFile="build/logs/clover.xml"/>
+            <html outputDirectory="build/coverage/html"/>
+        </report>
+    </coverage>
 </phpunit>
