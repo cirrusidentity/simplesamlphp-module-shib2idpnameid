@@ -28,7 +28,7 @@
     },
     "autoload": {
         "psr-4": {
-            "SimpleSAML\\Module\\authoauth2\\": "src/"
+            "SimpleSAML\\Module\\shib2idpnameid\\": "src/"
         }
     },
     "autoload-dev": {
