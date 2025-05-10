@@ -34,15 +34,13 @@ class PersistentNameID2TargetedID extends ProcessingFilter
      * Initialize this filter, parse configuration.
      *
      * @param array{
-     *          nameId: bool,
-     *          attribute: string,
-     *          attributename?: string
+     *          nameId?: bool,
+     *          attribute?: string,
      * } $config
      *
      * Description:
      * - `nameId` (bool): Whether to generate a NameID.
      * - `attribute` (string): Attribute containing the unique identifier of the user.
-     * - `attributename` (optional, string): Attribute name to hold the generated eduPersonTargetedID.
      *
      * @param mixed $reserved For future use.
      */

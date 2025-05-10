@@ -36,7 +36,6 @@ class PersistentNameID extends BaseNameIDGenerator
      * Initialize this filter, parse configuration.
      *
      * @param array{
-     *          nameId: bool,
      *          attribute: string,
      *          attributename?: string
      * } $config
