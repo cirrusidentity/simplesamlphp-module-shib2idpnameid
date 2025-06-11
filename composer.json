@@ -1,5 +1,5 @@
 {
-    "name": "niif/simplesamlphp-module-shib2idpnameid",
+    "name": "cirrusidentity/simplesamlphp-module-shib2idpnameid",
     "description": "Filter to generate generate PersistentNameID (and the value for eduPersonTargetedID) with the same algorithm as Shibboleth IdP does.",
     "type": "simplesamlphp-module",
     "require": {
