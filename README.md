@@ -1,8 +1,10 @@
-# Shib2nameID modul for SimpleSAMLphp
+# Shib2nameID module for SimpleSAMLphp
 
-This module can generate PersistentNameID (and the value for eduPersonTargetedID) with the same algorithm as Shibboleth
-IdP does. You would need this module if you migrate your IdP from Shibboleth to SimpleSAMLphp, and don't want the ePTID
-values to be changed.
+This module provides compatibility for organizations migrating from Shibboleth IdP to SimpleSAMLphp by implementing
+identical algorithms for generating various types of identifiers. It supports PersistentNameID, eduPersonTargetedID (
+ePTID), and PairwiseID generation using the same approach as Shibboleth IdP. This ensures that user identifiers remain
+consistent during and after migration, preventing disruption to existing service integrations and maintaining seamless
+user access across federated services.
 
 ## Usage
 You have to use the same `secretsalt` as you did at Shibboleth IdP.

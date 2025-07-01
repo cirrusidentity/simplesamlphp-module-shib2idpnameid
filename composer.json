@@ -16,7 +16,8 @@
     ],
     "require": {
         "simplesamlphp/composer-module-installer": "^1.1",
-        "simplesamlphp/simplesamlphp": "^v2.3"
+        "simplesamlphp/simplesamlphp": "^v2.3",
+        "paragonie/constant_time_encoding": "^3.0"
     },
     "require-dev": {
         "simplesamlphp/simplesamlphp-test-framework": "^1.7",
