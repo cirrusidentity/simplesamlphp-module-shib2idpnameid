@@ -1,0 +1,140 @@
+<?php
+
+declare(strict_types=1);
+
+namespace SimpleSAML\Module\shib2idpnameid\Auth\Process;
+
+use ParagonIE\ConstantTime\Base32;
+use SimpleSAML\Auth\ProcessingFilter;
+use SimpleSAML\{Configuration, Utils};
+
+/**
+ * Authproc filter to generate a pairwise ID using the same algorithm as Shibboleth IdP does.
+ * Requires a secret salt to be configured in the SimpleSAMLphp config.
+ *
+ * @version $Id$
+ */
+class PairwiseID extends ProcessingFilter
+{
+    /**
+     * The attribute we should save the NameID in.
+     *
+     * @var string
+     */
+    private string $attribute;
+
+
+    /**
+     * The scope used for pairwise ID generation.
+     *
+     * @var string|null
+     */
+    private ?string $scope;
+
+    /**
+     * The secret salt used for ID generation.
+     *
+     * @var string
+     */
+    private string $secretSalt;
+
+    /**
+     * Initialize this filter, parse configuration.
+     *
+     * @param array{
+     *          scope?: string,
+     *          attribute?: string,
+     * } $config
+     *
+     * Description:
+     * - `scope` (string): Scope of the pairwise ID.
+     * - `attribute` (string): Attribute containing the unique identifier of the user.
+     *
+     * @param mixed $reserved For future use.
+     * @throws \Exception
+     */
+    public function __construct(array $config, $reserved)
+    {
+        parent::__construct($config, $reserved);
+
+        $moduleConfig = Configuration::loadFromArray($config);
+        if ($moduleConfig->hasValue('attribute')) {
+            $this->attribute = (string)$moduleConfig->getString('attribute');
+        } else {
+            $this->attribute = 'eduPersonTargetedID';
+        }
+
+        if ($moduleConfig->hasValue('scope')) {
+            $this->scope = (string)$moduleConfig->getString('scope');
+        } else {
+            $this->scope = null;
+        }
+
+        $configUtils = new Utils\Config();
+        $this->secretSalt = $configUtils->getSecretSalt();
+    }
+
+    /**
+     * Store a pairwise-id to attribute.
+     *
+     * @param array &$request The request state.
+     */
+    public function process(&$request): void
+    {
+        if (!isset($request['Attributes']) || !is_array($request['Attributes'])) {
+            throw new \InvalidArgumentException('Missing or invalid attribute array in state.');
+        }
+
+        if (!isset($request['Source']['entityid']) || !is_string($request['Source']['entityid'])) {
+            throw new \InvalidArgumentException('Missing or invalid Source/entityid in state.');
+        }
+
+        $pairwiseId = $this->generatePairwiseId(
+            $request['Attributes'],
+            $this->attribute,
+            (string)$request['Source']['entityid'],
+            $this->secretSalt,
+            $this->scope
+        );
+
+        /** @psalm-suppress MixedArrayAssignment */
+        $request['Attributes']['pairwise-id'] = [$pairwiseId];
+    }
+
+    /**
+     * Generate a Shibboleth-compatible pairwise ID
+     *
+     * @param array $attributes User attributes array (['attributeName' => ['value']])
+     * @param string $attrName Attribute name for user id (e.g. 'uid', 'mail', etc)
+     * @param string $spEntityId The SP EntityID string
+     * @param string $salt Secret salt from config
+     * @param string|null $scope Optional scope suffix to append (e.g. 'example.edu')
+     * @return string                 Generated pairwise ID (base32, lower, no padding, with scope if given)
+     */
+    public function generatePairwiseId(
+        array $attributes,
+        string $attrName,
+        string $spEntityId,
+        string $salt,
+        ?string $scope = null
+    ): string {
+        if (
+            !isset($attributes[$attrName]) ||
+            !is_array($attributes[$attrName]) ||
+            count($attributes[$attrName]) === 0
+        ) {
+            throw new \InvalidArgumentException("Missing or empty attribute: $attrName");
+        }
+        $uid = (string)$attributes[$attrName][0];
+
+        $raw = $spEntityId . '!' . $uid . '!' . $salt;
+        $hash = hash('sha1', $raw, true); // binary
+        $b32 = Base32::encodeUnpadded($hash); // RFC 4648, no padding, uppercase
+        $b32 = strtolower($b32); // Shibboleth-style: lowercase
+
+        if ($scope !== null) {
+            return $b32 . '@' . $scope;
+        }
+        return $b32;
+    }
+}

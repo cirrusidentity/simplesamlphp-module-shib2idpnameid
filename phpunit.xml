@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<phpunit bootstrap="./tests/bootstrap.php">
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         colors="true"
+         bootstrap="./tests/bootstrap.php"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/8.5/phpunit.xsd"
+         backupGlobals="false"
+         failOnWarning="false"
+>
     <testsuites>
         <testsuite name="The project's test suite">
             <directory>./vendor/simplesamlphp/simplesamlphp-test-framework/src</directory>

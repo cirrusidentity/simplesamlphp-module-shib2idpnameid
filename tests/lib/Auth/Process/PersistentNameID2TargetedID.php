@@ -1,5 +1,7 @@
 <?php
 
+namespace Test\SimpleSAML\shib2idpnameid;
+
 use PHPUnit\Framework\TestCase;
 use SAML2\Constants;
 use SimpleSAML\Module\shib2idpnameid\Auth\Process\PersistentNameID;
@@ -7,8 +9,8 @@ use SimpleSAML\Module\shib2idpnameid\Auth\Process\PersistentNameID2TargetedID;
 
 class PersistentNameIDTest extends TestCase
 {
-
-    public function testPersistentNameID() {
+    public function testPersistentNameID()
+    {
         $config = [
           'attribute' => 'uid'
         ];
@@ -41,5 +43,4 @@ class PersistentNameIDTest extends TestCase
         $expectedValue->setValue('fed3500b21a7f41a0c29f6e361b31794bb185b10');
         $this->assertEquals($expectedValue, $state['Attributes']['uid'][0]);
     }
-
 }
