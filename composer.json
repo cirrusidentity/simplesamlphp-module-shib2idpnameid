@@ -7,7 +7,7 @@
         "paragonie/constant_time_encoding": "^2.7"
     },
     "require-dev": {
-        "simplesamlphp/simplesamlphp": "v1.18.8",
+        "simplesamlphp/simplesamlphp": "~v1.18.0",
         "phpunit/phpunit": "^8.5",
         "squizlabs/php_codesniffer": "^3.11",
         "php-cs-fixer/shim": "^3.68",
