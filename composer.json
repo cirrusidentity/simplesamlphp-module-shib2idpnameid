@@ -1,6 +1,6 @@
 {
     "name": "cirrusidentity/simplesamlphp-module-shib2idpnameid",
-    "description": "Filter to generate generate PersistentNameID (and the value for eduPersonTargetedID) with the same algorithm as Shibboleth IdP does.",
+    "description": "Filter to generate generate the PairewiseID, the PersistentNameID (and the value for eduPersonTargetedID) with the same algorithm as Shibboleth IdP does.",
     "type": "simplesamlphp-module",
     "require": {
         "simplesamlphp/composer-module-installer": "^1.1",
@@ -32,5 +32,10 @@
         "tests": [
             "vendor/bin/phpunit --no-coverage"
         ]
+    },
+    "config": {
+        "allow-plugins": {
+            "simplesamlphp/composer-module-installer": true
+        }
     }
 }
