@@ -24,7 +24,6 @@ For generating PersistentNameID, use the following configuration:
 ),
 ```
 
-
 Alternatively, to generate a targeted ID, you can use:
 
 ```
@@ -37,3 +36,14 @@ Alternatively, to generate a targeted ID, you can use:
 ),
 ```
 
+Alternatively, to generate a pairwise ID, you can use:
+
+```
+5 => array(
+       'class' => 'shib2idpnameid:PairwiseID',
+       // Optional
+       'scope' => 'example.com,
+       // Optional, defaults to `eduPersonTargetedID`
+       'attribute' => 'uid',
+),
+```
