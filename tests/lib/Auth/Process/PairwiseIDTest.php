@@ -46,31 +46,28 @@ class PairwiseIDTest extends TestCase
     /**
      * @throws \Exception
      */
-    public function testPairwiseID()
+    public function testPairwiseID(): void
     {
 
         $pairwiseId = new PairwiseID($this->config, null);
         $localState = $this->state;
 
         $pairwiseId->process($localState);
-        $this->assertArrayHasKey('pairwise-id', $localState['Attributes']);
-        $this->assertStringEndsWith('@example.com', $localState['Attributes']['pairwise-id'][0]);
-
-        $expectedPairwiseId = $pairwiseId->generatePairwiseID(
-            $localState['Attributes'],
-            'uid',
-            'https://idp.example.edu/shibboleth',
-            'donttellanyone',
-            'example.com'
+        $this->assertArrayHasKey(PairwiseID::PAIRWISEID_ATTR_NAME, $localState['Attributes']);
+        $this->assertStringEndsWith(
+            '@example.com',
+            $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]
         );
 
-        $this->assertEquals($expectedPairwiseId, $localState['Attributes']['pairwise-id'][0]);
+        $expectedPairwiseId = 'XEFBRGW7UTQJ6EKRXF6Q4K6FOQG32ZX3@example.com';
+
+        $this->assertEquals($expectedPairwiseId, $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]);
     }
 
     /**
      * @throws \Exception
      */
-    public function testPairwiseIDFailOnEmptyAttribute()
+    public function testPairwiseIDFailOnEmptyAttribute(): void
     {
 
         $pairwiseId = new PairwiseID($this->config, null);
@@ -79,5 +76,38 @@ class PairwiseIDTest extends TestCase
 
         $this->expectExceptionMessage("Missing or empty attribute: " . $this->config['attribute']);
         $pairwiseId->process($localState);
+    }
+
+
+    public function testCompareAgainstShibsAlgorithm(): void
+    {
+        // Setup values copied from Shib's unit tests
+        $sp = 'https://sp.example.org/sp';
+        $principalId = 'at1-Data';
+        $saltBytes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        $saltString = pack("C*", ...$saltBytes);
+        // Shib's algorithm capitalizes the value (but not the scope)
+        $expectedValue = 'KZPLH2FO6SELOOAC4BUDLZXZ6Q4PLLDM';
+
+        $attributes = [
+            'uid' => [$principalId]
+        ];
+        $pairwiseId = new PairwiseID($this->config, null);
+        $generatedId = $pairwiseId->generatePairwiseId($attributes, 'uid', $sp, $saltString);
+        $this->assertEquals($expectedValue, $generatedId);
+    }
+
+    public function testMissingSecretSalt(): void
+    {
+        $pairwiseIDMock = $this->getMockBuilder(PairwiseID::class)
+            ->setConstructorArgs([$this->config, null])
+            ->onlyMethods(['getSecretSalt'])
+            ->getMock();
+
+        $localState = $this->state;
+        $pairwiseIDMock->expects($this->once())->method('getSecretSalt')->willReturn('');
+
+        $this->expectExceptionMessage('Missing salt.');
+        $pairwiseIDMock->process($localState);
     }
 }
