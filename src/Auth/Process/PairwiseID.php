@@ -12,12 +12,18 @@ use SimpleSAML\{Configuration, Utils};
  * Authproc filter to generate a pairwise ID using the same algorithm as Shibboleth IdP does.
  * Requires a secret salt to be configured in the SimpleSAMLphp config.
  *
- * @version $Id$
  */
 class PairwiseID extends ProcessingFilter
 {
     /**
-     * The attribute we should save the NameID in.
+     * The SAML attribute name for pairwise ID.
+     * @psalm-suppress MissingClassConstType
+     * @var string
+     */
+    public const PAIRWISEID_ATTR_NAME = 'urn:oasis:names:tc:SAML:attribute:pairwise-id';
+
+    /**
+     * The attribute we should save the UID in.
      *
      * @var string
      */
@@ -30,13 +36,6 @@ class PairwiseID extends ProcessingFilter
      * @var string|null
      */
     private ?string $scope;
-
-    /**
-     * The secret salt used for ID generation.
-     *
-     * @var string
-     */
-    private string $secretSalt;
 
     /**
      * Initialize this filter, parse configuration.
@@ -60,15 +59,14 @@ class PairwiseID extends ProcessingFilter
         $moduleConfig = Configuration::loadFromArray($config);
         $this->attribute = $moduleConfig->getOptionalString('attribute', 'eduPersonTargetedID');
         $this->scope = $moduleConfig->getOptionalString('scope', null);
-
-        $configUtils = new Utils\Config();
-        $this->secretSalt = $configUtils->getSecretSalt();
     }
 
     /**
      * Store a pairwise-id to attribute.
      *
      * @param array &$state The request state.
+     * @throws \InvalidArgumentException
+     * @throws \Exception
      */
     public function process(array &$state): void
     {
@@ -80,16 +78,34 @@ class PairwiseID extends ProcessingFilter
             throw new \InvalidArgumentException('Missing or invalid Source/entityid in state.');
         }
 
+        $secretSalt = $this->getSecretSalt();
+
+        if (empty($secretSalt)) {
+            throw new \Exception('Missing salt.');
+        }
+
         $pairwiseId = $this->generatePairwiseId(
             $state['Attributes'],
             $this->attribute,
             (string)$state['Source']['entityid'],
-            $this->secretSalt,
+            $secretSalt,
             $this->scope
         );
 
         /** @psalm-suppress MixedArrayAssignment */
-        $state['Attributes']['pairwise-id'] = [$pairwiseId];
+        $state['Attributes'][self::PAIRWISEID_ATTR_NAME] = [$pairwiseId];
+    }
+
+
+    /**
+     * Get the secret salt from configuration.
+     *
+     * @return string The secret salt used for ID generation
+     */
+    public function getSecretSalt(): string
+    {
+        $configUtils = new Utils\Config();
+        return $configUtils->getSecretSalt();
     }
 
     /**
@@ -121,7 +137,7 @@ class PairwiseID extends ProcessingFilter
         $raw = $spEntityId . '!' . $uid . '!' . $salt;
         $hash = hash('sha1', $raw, true); // binary
         $b32 = Base32::encodeUnpadded($hash); // RFC 4648, no padding, uppercase
-        $b32 = strtolower($b32); // Shibboleth-style: lowercase
+        $b32 = strtoupper($b32); // Shibboleth-style: uppercase
 
         if ($scope !== null) {
             return $b32 . '@' . $scope;
