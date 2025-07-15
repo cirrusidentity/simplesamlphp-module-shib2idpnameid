@@ -37,7 +37,6 @@ class PersistentNameID2TargetedID extends ProcessingFilter
     public function __construct($config, $reserved)
     {
         parent::__construct($config, $reserved);
-        assert(is_array($config));
 
         if (isset($config['attribute'])) {
             $this->attribute = (string) $config['attribute'];
@@ -55,19 +54,18 @@ class PersistentNameID2TargetedID extends ProcessingFilter
     /**
      * Store a NameID to attribute.
      *
-     * @param array &$state The request state.
+     * @param array &$request The request state.
      */
-    public function process(&$state)
+    /** @psalm-suppress MissingReturnType */
+    public function process(&$request)
     {
-        assert(is_array($state));
-
-        if (!isset($state['saml:NameID'][Constants::NAMEID_PERSISTENT])) {
+        if (!isset($request['saml:NameID'][Constants::NAMEID_PERSISTENT])) {
             Logger::warning('Unable to generate eduPersonTargetedID because no persistent NameID was available.');
             return;
         }
 
         /** @var NameID $nameID */
-        $nameID = $state['saml:NameID'][Constants::NAMEID_PERSISTENT];
+        $nameID = $request['saml:NameID'][Constants::NAMEID_PERSISTENT];
 
         if ($this->nameId) {
             $value = $nameID;
@@ -75,6 +73,7 @@ class PersistentNameID2TargetedID extends ProcessingFilter
             $value = $nameID->getValue();
         }
 
-        $state['Attributes'][$this->attribute] = array($value);
+        /** @psalm-suppress MixedArrayAssignment */
+        $request['Attributes'][$this->attribute] = array($value);
     }
 }
