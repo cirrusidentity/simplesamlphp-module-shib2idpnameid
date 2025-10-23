@@ -64,6 +64,72 @@ class PairwiseIDTest extends TestCase
         $this->assertEquals($expectedPairwiseId, $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]);
     }
 
+    public function testGeneratePairwiseIdSha1MatchesReference(): void
+    {
+        $sp = 'https://sp.example.org/sp';
+        $uid = 'alice';
+        $salt = 's3cr3t-salt';
+        $scope = 'Example.ORG'; // keep mixed case to ensure we don't alter scope casing
+
+        $attributes = ['uid' => [$uid]];
+
+        $config = array_merge($this->config, ['algorithm' => 'sha1']);
+        $pairwiseId = new PairwiseID($config, null);
+        // I will omit the algorithm since the default is sha1
+        $actualOmit = $pairwiseId->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope);
+        $actual = $pairwiseId->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'sha1');
+
+        $this->assertSame(
+        // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
+            'THD5763KBLAEDQBU2GB7SA6WXFXLKI3B@Example.ORG',
+            $actualOmit,
+            'SHA-1 pairwise-id mismatch',
+        );
+
+        $this->assertSame(
+        // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
+            'THD5763KBLAEDQBU2GB7SA6WXFXLKI3B@Example.ORG',
+            $actualOmit,
+            'SHA-1 pairwise-id mismatch',
+        );
+
+        $this->assertSame(
+            $actual,
+            $actualOmit,
+            'The generated pairwise-id should be the same for both omitting and specifying the algorithm',
+        );
+        $this->assertRegExp(
+            '/^[A-Z2-7]+@Example\.ORG$/',
+            $actual,
+            'Format/case mismatch for SHA-1',
+        );
+    }
+
+    public function testGeneratePairwiseIdHmacSha256MatchesReference(): void
+    {
+        $sp = 'https://sp.example.org';
+        $uid = 'alice';
+        $salt = 's3cr3t-salt';
+        $scope = 'example.org';
+
+        $attributes = ['uid' => [$uid]];
+        $config = array_merge($this->config, ['algorithm' => 'sha1']);
+        $pairwise = new PairwiseID($config, null);
+        $actual = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'hmac-sha256');
+
+        $this->assertSame(
+        // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
+            "FYTB5UBFURYSJWUEEP6DHB6BKSLVROK2OHWQKCVLBMSQQW2URWHA@example.org",
+            $actual,
+            'HMAC-SHA256 pairwise-id mismatch',
+        );
+        $this->assertRegExp(
+            '/^[A-Z2-7]+@example\.org$/',
+            $actual,
+            'Format/case mismatch for HMAC-SHA256',
+        );
+    }
+
     /**
      * @throws \Exception
      */
@@ -77,7 +143,6 @@ class PairwiseIDTest extends TestCase
         $this->expectExceptionMessage("Missing or empty attribute: " . $this->config['attribute']);
         $pairwiseId->process($localState);
     }
-
 
     public function testCompareAgainstShibsAlgorithm(): void
     {
@@ -109,5 +174,36 @@ class PairwiseIDTest extends TestCase
 
         $this->expectExceptionMessage('Missing salt.');
         $pairwiseIDMock->process($localState);
+    }
+
+    public function testInvalidAlgorithmThrows(): void
+    {
+        $sp = 'https://sp.example.org/sp';
+        $uid = 'alice';
+        $salt = 's3cr3t-salt';
+        $scope = 'example.org';
+        $attributes = ['uid' => [$uid]];
+        $config = array_merge($this->config, ['algorithm' => 'bad-algorithm']);
+        $pairwise = new PairwiseID($config, null);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Missing or invalid algorithm. Allowed: 'sha1', 'hmac-sha256'.");
+        $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'md5');
+    }
+
+    public function testAlgorithmsProduceDifferentOutputs(): void
+    {
+        $sp = 'https://sp.example.org/sp';
+        $uid = 'alice';
+        $salt = 's3cr3t-salt';
+        $scope = 'example.org';
+        $attributes = ['uid' => [$uid]];
+        $config = array_merge($this->config, ['algorithm' => 'bad-algorithm']);
+        $pairwise = new PairwiseID($config, null);
+
+        $sha1 = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'sha1');
+        $hmac = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'hmac-sha256');
+
+        $this->assertNotSame($sha1, $hmac, 'SHA-1 and HMAC-SHA256 outputs must differ');
     }
 }
