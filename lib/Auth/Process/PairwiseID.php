@@ -56,7 +56,7 @@ class PairwiseID extends ProcessingFilter
      * Description:
      * - `scope` (string): Scope of the pairwise ID.
      * - `attribute` (string): Attribute containing the unique identifier of the user.
-     *
+     * - `algorithm` (string): Attribute containing the algorithm used for pairwise ID generation.
      * @param mixed $reserved For future use.
      * @throws \Exception
      */
@@ -65,23 +65,17 @@ class PairwiseID extends ProcessingFilter
         parent::__construct($config, $reserved);
 
         $moduleConfig = Configuration::loadFromArray($config);
-        if ($moduleConfig->hasValue('attribute')) {
-            $this->attribute = (string)$moduleConfig->getString('attribute');
-        } else {
-            $this->attribute = 'eduPersonTargetedID';
-        }
-
+        // Optional
+        $this->attribute = (string)$moduleConfig->getString('attribute', 'eduPersonTargetedID');
+        // We can not use the `getString` method directly here because if we cast the null value to string,
+        // we will get an empty string instead of null.
         if ($moduleConfig->hasValue('scope')) {
             $this->scope = (string)$moduleConfig->getString('scope');
         } else {
             $this->scope = null;
         }
-
-        if ($moduleConfig->hasValue('algorithm')) {
-            $this->algorithm = (string)$moduleConfig->getString('algorithm');
-        } else {
-            $this->algorithm = 'sha1';
-        }
+        // Required
+        $this->algorithm = (string)$moduleConfig->getString('algorithm');
     }
 
     /**

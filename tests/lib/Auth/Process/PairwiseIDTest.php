@@ -12,6 +12,7 @@ class PairwiseIDTest extends TestCase
     private array $config = [
         'attribute' => 'uid',
         'scope' => 'example.com',
+        'algorithm' => 'sha1',
     ];
 
     private array $state = [
@@ -41,6 +42,34 @@ class PairwiseIDTest extends TestCase
         unset($localState['Source']);
         $this->expectExceptionMessage('Missing or invalid Source/entityid in state.');
         $pairwiseId->process($localState);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testDefaultConfig(): void
+    {
+        $minimalConfig = ['algorithm' => 'sha1'];
+        $pairwiseId = new PairwiseID($minimalConfig, null);
+
+        $reflectionClass = new \ReflectionClass(PairwiseID::class);
+
+        $attributeProperty = $reflectionClass->getProperty('attribute');
+        $attributeProperty->setAccessible(true);
+        $this->assertEquals('eduPersonTargetedID', $attributeProperty->getValue($pairwiseId));
+
+        $scopeProperty = $reflectionClass->getProperty('scope');
+        $scopeProperty->setAccessible(true);
+        $this->assertNull($scopeProperty->getValue($pairwiseId));
+
+        $localState = $this->state;
+        $localState['Attributes']['eduPersonTargetedID'] = ['testUser'];
+        $pairwiseId->process($localState);
+        $this->assertArrayHasKey(PairwiseID::PAIRWISEID_ATTR_NAME, $localState['Attributes']);
+        $this->assertStringNotContainsString(
+            '@',
+            $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]
+        );
     }
 
     /**
@@ -189,6 +218,16 @@ class PairwiseIDTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage("Missing or invalid algorithm. Allowed: 'sha1', 'hmac-sha256'.");
         $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'md5');
+    }
+
+    public function testMissingAlgorithmConfigurationThrows(): void
+    {
+        $config = $this->config;
+        unset($config['algorithm']);
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage("Could not retrieve the required option 'algorithm'");
+        $pairwise = new PairwiseID($config, null);
     }
 
     public function testAlgorithmsProduceDifferentOutputs(): void
