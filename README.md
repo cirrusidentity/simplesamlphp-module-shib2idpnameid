@@ -45,5 +45,7 @@ Alternatively, to generate a pairwise ID, you can use:
        'scope' => 'example.com,
        // Optional, defaults to `eduPersonTargetedID`
        'attribute' => 'uid',
+       // Required, allowed values are sha1, hmac-sha256,
+       'algorithm' => 'sha1',
 ),
 ```

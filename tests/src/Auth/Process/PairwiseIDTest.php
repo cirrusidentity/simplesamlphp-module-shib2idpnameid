@@ -13,6 +13,7 @@ class PairwiseIDTest extends TestCase
     private array $config = [
         'attribute' => 'uid',
         'scope' => 'example.com',
+        'algorithm' => 'sha1'
     ];
 
     private array $state = [
@@ -189,6 +190,16 @@ class PairwiseIDTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage("Missing or invalid algorithm. Allowed: 'sha1', 'hmac-sha256'.");
         $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'md5');
+    }
+
+    public function testMissingAlgorithmConfigurationThrows(): void
+    {
+        $config = $this->config;
+        unset($config['algorithm']);
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage("Could not retrieve the required option 'algorithm'");
+        $pairwise = new PairwiseID($config, null);
     }
 
     public function testAlgorithmsProduceDifferentOutputs(): void
