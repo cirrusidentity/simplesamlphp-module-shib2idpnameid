@@ -46,6 +46,34 @@ class PairwiseIDTest extends TestCase
     }
 
     /**
+     * @throws \Exception
+     */
+    public function testDefaultConfig(): void
+    {
+        $minimalConfig = ['algorithm' => 'sha1'];
+        $pairwiseId = new PairwiseID($minimalConfig, null);
+
+        $reflectionClass = new \ReflectionClass(PairwiseID::class);
+
+        $attributeProperty = $reflectionClass->getProperty('attribute');
+        $attributeProperty->setAccessible(true);
+        $this->assertEquals('eduPersonTargetedID', $attributeProperty->getValue($pairwiseId));
+
+        $scopeProperty = $reflectionClass->getProperty('scope');
+        $scopeProperty->setAccessible(true);
+        $this->assertNull($scopeProperty->getValue($pairwiseId));
+
+        $localState = $this->state;
+        $localState['Attributes']['eduPersonTargetedID'] = ['testUser'];
+        $pairwiseId->process($localState);
+        $this->assertArrayHasKey(PairwiseID::PAIRWISEID_ATTR_NAME, $localState['Attributes']);
+        $this->assertStringNotContainsString(
+            '@',
+            $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]
+        );
+    }
+
+    /**
      * @throws Exception
      * @throws \Exception
      */
