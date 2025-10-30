@@ -202,7 +202,7 @@ class PairwiseIDTest extends TestCase
         $pairwise = new PairwiseID($config, null);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage("Missing or invalid algorithm. Allowed: 'sha1', 'hmac-sha256'.");
+        $this->expectExceptionMessage("Invalid algorithm. Allowed: 'sha1', 'hmac-sha256'.");
         $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'md5');
     }
 

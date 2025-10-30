@@ -154,7 +154,7 @@ class PairwiseID extends ProcessingFilter
             'sha1' => $this->computeShibbolethStyleSha1Reference($spEntityId, $uid, $salt, $scope),
             'hmac-sha256' => $this->computeShibbolethStyleHmacSha256Reference($spEntityId, $uid, $salt, $scope),
             default => throw new \InvalidArgumentException(
-                "Missing or invalid algorithm. Allowed: 'sha1', 'hmac-sha256'.",
+                "Invalid algorithm. Allowed: 'sha1', 'hmac-sha256'.",
             ),
         };
     }
