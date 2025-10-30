@@ -105,29 +105,15 @@ class PairwiseIDTest extends TestCase
 
         $config = array_merge($this->config, ['algorithm' => 'sha1']);
         $pairwiseId = new PairwiseID($config, null);
-        // I will omit the algorithm since the default is sha1
-        $actualOmit = $pairwiseId->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope);
-        $actual = $pairwiseId->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'sha1');
+        $actual = $pairwiseId->generatePairwiseId($attributes, 'uid', $sp, $salt, 'sha1', $scope);
 
         $this->assertSame(
             // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
             'THD5763KBLAEDQBU2GB7SA6WXFXLKI3B@Example.ORG',
-            $actualOmit,
-            'SHA-1 pairwise-id mismatch',
-        );
-
-        $this->assertSame(
-            // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
-            'THD5763KBLAEDQBU2GB7SA6WXFXLKI3B@Example.ORG',
-            $actualOmit,
-            'SHA-1 pairwise-id mismatch',
-        );
-
-        $this->assertSame(
             $actual,
-            $actualOmit,
-            'The generated pairwise-id should be the same for both omitting and specifying the algorithm',
+            'SHA-1 pairwise-id mismatch',
         );
+
         $this->assertMatchesRegularExpression(
             '/^[A-Z2-7]+@Example\.ORG$/',
             $actual,
@@ -145,7 +131,7 @@ class PairwiseIDTest extends TestCase
         $attributes = ['uid' => [$uid]];
         $config = array_merge($this->config, ['algorithm' => 'sha1']);
         $pairwise = new PairwiseID($config, null);
-        $actual = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'hmac-sha256');
+        $actual = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, 'hmac-sha256', $scope);
 
         $this->assertSame(
             // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
@@ -187,7 +173,7 @@ class PairwiseIDTest extends TestCase
             'uid' => [$principalId]
         ];
         $pairwiseId = new PairwiseID($this->config, null);
-        $generatedId = $pairwiseId->generatePairwiseId($attributes, 'uid', $sp, $saltString);
+        $generatedId = $pairwiseId->generatePairwiseId($attributes, 'uid', $sp, $saltString, 'sha1');
         $this->assertEquals($expectedValue, $generatedId);
     }
 
@@ -240,8 +226,8 @@ class PairwiseIDTest extends TestCase
         $config = array_merge($this->config, ['algorithm' => 'bad-algorithm']);
         $pairwise = new PairwiseID($config, null);
 
-        $sha1 = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'sha1');
-        $hmac = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, $scope, 'hmac-sha256');
+        $sha1 = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, 'sha1', $scope);
+        $hmac = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, 'hmac-sha256', $scope);
 
         $this->assertNotSame($sha1, $hmac, 'SHA-1 and HMAC-SHA256 outputs must differ');
     }

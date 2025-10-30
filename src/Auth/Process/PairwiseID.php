@@ -23,7 +23,7 @@ class PairwiseID extends ProcessingFilter
     public const PAIRWISEID_ATTR_NAME = 'urn:oasis:names:tc:SAML:attribute:pairwise-id';
 
     /**
-     * The attribute we should save the UID in.
+     * The attribute to get the seed value from
      *
      * @var string
      */
@@ -40,9 +40,9 @@ class PairwiseID extends ProcessingFilter
     /**
      * The algorithm used for pairwise ID generation.
      *
-     * @var string|null
+     * @var string
      */
-    private ?string $algorithm;
+    private string $algorithm;
 
     /**
      * Initialize this filter, parse configuration.
@@ -50,7 +50,7 @@ class PairwiseID extends ProcessingFilter
      * @param array{
      *          scope?: string,
      *          attribute?: string,
-     *          algorithm?: string,
+     *          algorithm: string,
      * } $config
      *
      * Description:
@@ -101,8 +101,8 @@ class PairwiseID extends ProcessingFilter
             $this->attribute,
             (string)$state['Source']['entityid'],
             $secretSalt,
-            $this->scope,
             $this->algorithm,
+            $this->scope,
         );
 
         /** @psalm-suppress MixedArrayAssignment */
@@ -128,8 +128,8 @@ class PairwiseID extends ProcessingFilter
      * @param string $attrName Attribute name for user id (e.g. 'uid', 'mail', etc)
      * @param string $spEntityId The SP EntityID string
      * @param string $salt Secret salt from config
+     * @param string $alg Algorithm to use: 'sha1' or 'hmac-sha256'
      * @param string|null $scope Optional scope suffix to append (e.g. 'example.edu')
-     * @param string|null $alg Algorithm to use: 'sha1' or 'hmac-sha256'. If null, falls back to $this->algorithm.
      * @return string                 Generated pairwise ID (base32, lower, no padding, with scope if given)
      * @throws \InvalidArgumentException
      */
@@ -138,8 +138,8 @@ class PairwiseID extends ProcessingFilter
         string $attrName,
         string $spEntityId,
         string $salt,
+        string $alg,
         ?string $scope = null,
-        ?string $alg = null
     ): string {
         if (
             !isset($attributes[$attrName]) ||
@@ -150,8 +150,7 @@ class PairwiseID extends ProcessingFilter
         }
         $uid = (string)$attributes[$attrName][0];
 
-        $algorithm = strtolower($alg ?? $this->algorithm ?? '');
-        return match ($algorithm) {
+        return match ($alg) {
             'sha1' => $this->computeShibbolethStyleSha1Reference($spEntityId, $uid, $salt, $scope),
             'hmac-sha256' => $this->computeShibbolethStyleHmacSha256Reference($spEntityId, $uid, $salt, $scope),
             default => throw new \InvalidArgumentException(
