@@ -23,8 +23,7 @@ class PairwiseID extends ProcessingFilter
     public const PAIRWISEID_ATTR_NAME = 'urn:oasis:names:tc:SAML:attribute:pairwise-id';
 
     /**
-     * The attribute we should save the UID in.
-     *
+     * The attribute to get the seed value from
      * @var string
      */
     private string $attribute;
@@ -38,17 +37,25 @@ class PairwiseID extends ProcessingFilter
     private ?string $scope;
 
     /**
+     * The algorithm used for pairwise ID generation.
+     *
+     * @var string
+     */
+    private string $algorithm;
+
+    /**
      * Initialize this filter, parse configuration.
      *
      * @param array{
      *          scope?: string,
      *          attribute?: string,
+     *          algorithm: string,
      * } $config
      *
      * Description:
      * - `scope` (string): Scope of the pairwise ID.
      * - `attribute` (string): Attribute containing the unique identifier of the user.
-     *
+     * - `algorithm` (string): Attribute containing the algorithm used for pairwise ID generation.
      * @param mixed $reserved For future use.
      * @throws \Exception
      */
@@ -57,17 +64,17 @@ class PairwiseID extends ProcessingFilter
         parent::__construct($config, $reserved);
 
         $moduleConfig = Configuration::loadFromArray($config);
-        if ($moduleConfig->hasValue('attribute')) {
-            $this->attribute = (string)$moduleConfig->getString('attribute');
-        } else {
-            $this->attribute = 'eduPersonTargetedID';
-        }
-
+        // Optional
+        $this->attribute = (string)$moduleConfig->getString('attribute', 'eduPersonTargetedID');
+        // We cannot use the `getString` method directly here because if we cast the null value to string,
+        // we will get an empty string instead of null.
         if ($moduleConfig->hasValue('scope')) {
             $this->scope = (string)$moduleConfig->getString('scope');
         } else {
             $this->scope = null;
         }
+        // Required
+        $this->algorithm = (string)$moduleConfig->getString('algorithm');
     }
 
     /**
@@ -98,7 +105,8 @@ class PairwiseID extends ProcessingFilter
             $this->attribute,
             (string)$request['Source']['entityid'],
             $secretSalt,
-            $this->scope
+            $this->algorithm,
+            $this->scope,
         );
 
         /** @psalm-suppress MixedArrayAssignment */
@@ -124,14 +132,17 @@ class PairwiseID extends ProcessingFilter
      * @param string $attrName Attribute name for user id (e.g. 'uid', 'mail', etc)
      * @param string $spEntityId The SP EntityID string
      * @param string $salt Secret salt from config
+     * @param string $alg Algorithm to use: 'sha1' or 'hmac-sha256'.
      * @param string|null $scope Optional scope suffix to append (e.g. 'example.edu')
      * @return string                 Generated pairwise ID (base32, lower, no padding, with scope if given)
-     */
+     * @throws \InvalidArgumentException
+ */
     public function generatePairwiseId(
         array $attributes,
         string $attrName,
         string $spEntityId,
         string $salt,
+        string $alg,
         ?string $scope = null
     ): string {
         if (
@@ -143,13 +154,70 @@ class PairwiseID extends ProcessingFilter
         }
         $uid = (string)$attributes[$attrName][0];
 
-        $raw = $spEntityId . '!' . $uid . '!' . $salt;
-        $hash = hash('sha1', $raw, true); // binary
-        $b32 = Base32::encodeUnpadded($hash); // RFC 4648, no padding, uppercase
-        $b32 = strtoupper($b32); // Shibboleth-style: uppercase
+        if ($alg === 'sha1') {
+            return $this->computeShibbolethStyleSha1Reference($spEntityId, $uid, $salt, $scope);
+        } elseif ($alg === 'hmac-sha256') {
+            return $this->computeShibbolethStyleHmacSha256Reference($spEntityId, $uid, $salt, $scope);
+        } else {
+            throw new \InvalidArgumentException(
+                "Invalid algorithm. Allowed: 'sha1', 'hmac-sha256'."
+            );
+        }
+    }
 
-        if ($scope !== null) {
-            return $b32 . '@' . $scope;
+
+    /**
+     * Compute a pairwise ID using SHA-1 algorithm
+     *
+     * @param string $sp The SP EntityID string
+     * @param string $uid The user identifier
+     * @param string $salt Secret salt from config
+     * @param string|null $scope Optional scope suffix to append
+     * @return string Generated pairwise ID
+     */
+    private function computeShibbolethStyleSha1Reference(
+        string $sp,
+        string $uid,
+        string $salt,
+        ?string $scope = null
+    ): string {
+        // SHA-1 over "SP!UID!SALT" → Base32 unpadded → uppercase → optional @scope
+        $raw = $sp . '!' . $uid . '!' . $salt;
+        $digest = hash('sha1', $raw, true); // binary
+        // RFC 4648, no padding
+        $digest = Base32::encodeUnpadded($digest);
+        // Shibboleth-style: uppercase
+        $b32 = strtoupper($digest);
+        if ($scope !== null && $scope !== '') {
+            $b32 = $b32 . '@' . $scope;
+        }
+        return $b32;
+    }
+
+    /**
+     * Compute a pairwise ID using HMAC-SHA256 algorithm
+     *
+     * @param string $sp The SP EntityID string
+     * @param string $uid The user identifier
+     * @param string $salt Secret salt from config
+     * @param string|null $scope Optional scope suffix to append
+     * @return string Generated pairwise ID
+     */
+    private function computeShibbolethStyleHmacSha256Reference(
+        string $sp,
+        string $uid,
+        string $salt,
+        ?string $scope = null
+    ): string {
+        // HMAC-SHA256(key = salt, msg = "SP!UID") → Base32 unpadded → uppercase
+        $msg = $sp . '!' . $uid;
+        $digest = hash_hmac('sha256', $msg, $salt, true); // binary
+        // RFC 4648, no padding
+        $digest = Base32::encodeUnpadded($digest);
+        // Shibboleth-style: uppercase
+        $b32 = strtoupper($digest);
+        if ($scope !== null && $scope !== '') {
+            $b32 = $b32 . '@' . $scope;
         }
         return $b32;
     }

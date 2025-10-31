@@ -27,5 +27,6 @@ Put into the `authproc.idp` section:
     'class'     => 'shib2idpnameid:PairwiseID',
     'attribute' => 'uid',           // (optional) Attribute holding the unique user identifier
     'scope'     => 'example.edu',   // (optional) Suffix to add to the pairwise-id (e.g., domain)
+    'algorithm' => 'sha1',          // (required) allowed values are sha1, hmac-sha256
 ]
 ```
