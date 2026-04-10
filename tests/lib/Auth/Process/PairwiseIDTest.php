@@ -19,14 +19,9 @@ class PairwiseIDTest extends TestCase
         'Attributes' => [
             'uid' => ['774333']
         ],
-        'Destination' =>
-            [
-                'entityid' => 'https://somesp.edugain.example.edu/sp'
-            ],
-        'Source' =>
-            [
-                'entityid' => 'https://idp.example.edu/shibboleth'
-            ]
+        // Pairwise ID is computed per SP; in SSP state this is typically "core:SP"
+        // (or "saml:RequesterID[0]" for proxied).
+        'core:SP' => 'https://somesp.edugain.example.edu/sp',
     ];
 
     public function testNoConfigOptions(): void
@@ -39,8 +34,8 @@ class PairwiseIDTest extends TestCase
         $pairwiseId->process($localState);
 
         $localState = $this->state;
-        unset($localState['Source']);
-        $this->expectExceptionMessage('Missing or invalid Source/entityid in state.');
+        unset($localState['core:SP']);
+        $this->expectExceptionMessage('Missing SP entityID (core:SP or saml:RequesterID[0]).');
         $pairwiseId->process($localState);
     }
 
@@ -85,10 +80,10 @@ class PairwiseIDTest extends TestCase
         $this->assertArrayHasKey(PairwiseID::PAIRWISEID_ATTR_NAME, $localState['Attributes']);
         $this->assertStringEndsWith(
             '@example.com',
-            $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]
+            $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0],
         );
 
-        $expectedPairwiseId = 'XEFBRGW7UTQJ6EKRXF6Q4K6FOQG32ZX3@example.com';
+        $expectedPairwiseId = 'B7VDEFQKNFXREJWWRDH3FKXBU4S3YGOY@example.com';
 
         $this->assertEquals($expectedPairwiseId, $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]);
     }
@@ -134,7 +129,7 @@ class PairwiseIDTest extends TestCase
         $actual = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, 'hmac-sha256', $scope);
 
         $this->assertSame(
-        // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
+            // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
             "FYTB5UBFURYSJWUEEP6DHB6BKSLVROK2OHWQKCVLBMSQQW2URWHA@example.org",
             $actual,
             'HMAC-SHA256 pairwise-id mismatch',
@@ -214,7 +209,7 @@ class PairwiseIDTest extends TestCase
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage("Could not retrieve the required option 'algorithm'");
-        $pairwise = new PairwiseID($config, null);
+        new PairwiseID($config, null);
     }
 
     public function testAlgorithmsProduceDifferentOutputs(): void
@@ -231,5 +226,72 @@ class PairwiseIDTest extends TestCase
         $hmac = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, 'hmac-sha256', $scope);
 
         $this->assertNotSame($sha1, $hmac, 'SHA-1 and HMAC-SHA256 outputs must differ');
+    }
+
+    public function testMissingSpEntityIdThrows(): void
+    {
+        $pairwise = new PairwiseID($this->config, null);
+
+        $localState = $this->state;
+        unset($localState['core:SP']);
+        unset($localState['saml:RequesterID']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Missing SP entityID (core:SP or saml:RequesterID[0]).');
+        $pairwise->process($localState);
+    }
+
+    public function testRequesterIdTakesPrecedenceOverCoreSp(): void
+    {
+        $pairwise = $this->getMockBuilder(PairwiseID::class)
+            ->setConstructorArgs([$this->config, null])
+            ->onlyMethods(['getSecretSalt'])
+            ->getMock();
+
+        $pairwise->method('getSecretSalt')->willReturn('secretsalt');
+
+        $localState = $this->state;
+        $localState['core:SP'] = 'https://core-sp.example.org/sp';
+        $localState['saml:RequesterID'] = ['https://requester-sp.example.org/sp'];
+
+        $pairwise->process($localState);
+
+        $expected = $pairwise->generatePairwiseId(
+            ['uid' => ['774333']],
+            'uid',
+            'https://requester-sp.example.org/sp',
+            'secretsalt',
+            'sha1',
+            'example.com',
+        );
+
+        $this->assertSame($expected, $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]);
+    }
+
+    public function testMalformedRequesterIdFallsBackToCoreSp(): void
+    {
+        $pairwise = $this->getMockBuilder(PairwiseID::class)
+            ->setConstructorArgs([$this->config, null])
+            ->onlyMethods(['getSecretSalt'])
+            ->getMock();
+
+        $pairwise->method('getSecretSalt')->willReturn('secretsalt');
+
+        $localState = $this->state;
+        $localState['core:SP'] = 'https://core-sp.example.org/sp';
+        $localState['saml:RequesterID'] = 'not-an-array';
+
+        $pairwise->process($localState);
+
+        $expected = $pairwise->generatePairwiseId(
+            ['uid' => ['774333']],
+            'uid',
+            'https://core-sp.example.org/sp',
+            'secretsalt',
+            'sha1',
+            'example.com',
+        );
+
+        $this->assertSame($expected, $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]);
     }
 }
