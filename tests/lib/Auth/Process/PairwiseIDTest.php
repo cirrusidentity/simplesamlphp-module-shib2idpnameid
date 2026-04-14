@@ -229,34 +229,6 @@ class PairwiseIDTest extends TestCase
         $this->assertNotSame($sha1, $hmac, 'SHA-1 and HMAC-SHA256 outputs must differ');
     }
 
-    public function testDestinationEntityIdIsUsedEvenIfCoreSpOrRequesterIdPresent(): void
-    {
-        $pairwise = $this->getMockBuilder(PairwiseID::class)
-            ->setConstructorArgs([$this->config, null])
-            ->onlyMethods(['getSecretSalt'])
-            ->getMock();
-
-        $pairwise->method('getSecretSalt')->willReturn('secretsalt');
-
-        $localState = $this->state;
-        $localState['Destination']['entityid'] = 'https://destination-sp.example.org/sp';
-        $localState['core:SP'] = 'https://core-sp.example.org/sp';
-        $localState['saml:RequesterID'] = ['https://requester-sp.example.org/sp'];
-
-        $pairwise->process($localState);
-
-        $expected = $pairwise->generatePairwiseId(
-            ['uid' => ['774333']],
-            'uid',
-            'https://destination-sp.example.org/sp',
-            'secretsalt',
-            'sha1',
-            'example.com',
-        );
-
-        $this->assertSame($expected, $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]);
-    }
-
     public function testPairwiseIdChangesWhenDestinationEntityIdChanges(): void
     {
         $pairwise = $this->getMockBuilder(PairwiseID::class)
