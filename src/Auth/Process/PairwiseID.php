@@ -86,10 +86,7 @@ class PairwiseID extends ProcessingFilter
             throw new \InvalidArgumentException('Missing or invalid attribute array in state.');
         }
 
-        if (!isset($state['Source']['entityid']) || !is_string($state['Source']['entityid'])) {
-            throw new \InvalidArgumentException('Missing or invalid Source/entityid in state.');
-        }
-
+        $spEntityId = $this->extractSpEntityId($state);
         $secretSalt = $this->getSecretSalt();
 
         if (empty($secretSalt)) {
@@ -99,7 +96,7 @@ class PairwiseID extends ProcessingFilter
         $pairwiseId = $this->generatePairwiseId(
             $state['Attributes'],
             $this->attribute,
-            (string)$state['Source']['entityid'],
+            $spEntityId,
             $secretSalt,
             $this->algorithm,
             $this->scope,
@@ -214,5 +211,32 @@ class PairwiseID extends ProcessingFilter
             $b32 = $b32 . '@' . $scope;
         }
         return $b32;
+    }
+
+    /**
+     * Determine which SP entityID to bind a pairwise identifier to.
+     *
+     * Product position:
+     * - Pairwise IDs MUST be generated for the SP that is directly integrated with us (the immediate relying party),
+     *   not for an "ultimate/original requester" in proxied/hub scenarios.
+     *
+     * In SimpleSAMLphp state, that direct SP is represented as:
+     * - `$state['Destination']['entityid']`
+     *
+     * @param array $state The SimpleSAMLphp state array for the current request.
+     * @return string The selected SP entityID.
+     */
+    private function extractSpEntityId(array $state): string
+    {
+        if (
+            isset($state['Destination']['entityid'])
+            && is_array($state['Destination'])
+            && is_string($state['Destination']['entityid'])
+            && $state['Destination']['entityid'] !== ''
+        ) {
+            return $state['Destination']['entityid'];
+        }
+
+        throw new \InvalidArgumentException('Missing SP entityID (Destination[entityid]).');
     }
 }
