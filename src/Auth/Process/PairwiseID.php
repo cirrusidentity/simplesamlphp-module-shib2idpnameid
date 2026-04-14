@@ -216,26 +216,12 @@ class PairwiseID extends ProcessingFilter
     /**
      * Determine which SP entityID to bind a pairwise identifier to.
      *
-     * Applies when:
-     * - This code runs in an IdP-side processing context where the current relying party (SP) is represented in the
-     *   state (typically via `core:SP`), and
-     * - You want pairwise IDs to be stable per *ultimate/original* requester in proxy scenarios, not per intermediary.
-     *   If the request has been proxied, SimpleSAMLphp may populate `saml:RequesterID` with a requester chain; when
-     *   present, we take index 0 as the "original requester" entityID.
+     * Product position:
+     * - Pairwise IDs MUST be generated for the SP that is directly integrated with us (the immediate relying party),
+     *   not for an "ultimate/original requester" in proxied/hub scenarios.
      *
-     * Produces the "correct" pairwise ID only if:
-     * - `core:SP` contains the SP entityID for non-proxied flows, and
-     * - `saml:RequesterID[0]` is in fact the entityID you intend to pair against (commonly the original downstream SP).
-     *
-     * Will NOT create/construct the intended pairwise ID when:
-     * - Your deployment orders `saml:RequesterID` differently (e.g., nearest-first), so `[0]` refers to a proxy rather
-     *   than the downstream SP you mean to target.
-     * - A hub/broker intentionally omits or rewrites requester information; `saml:RequesterID` may be absent or may
-     *   identify only the broker, making downstream-SP pairwise IDs impossible or misleading.
-     * - Your intended semantics are "pairwise per immediate requester/proxy" (policy choice). In that case, preferring
-     *   `saml:RequesterID[0]` would be wrong; you would bind to the direct requester instead.
-     * - This runs in a context where neither `core:SP` nor `saml:RequesterID` are populated (different pipeline/entry
-     *   point), in which case we throw.
+     * In SimpleSAMLphp state, that direct SP is represented as:
+     * - `$state['Destination']['entityid']`
      *
      * @param array $state The SimpleSAMLphp state array for the current request.
      * @return string The selected SP entityID.
@@ -243,19 +229,14 @@ class PairwiseID extends ProcessingFilter
     private function extractSpEntityId(array $state): string
     {
         if (
-            isset($state['saml:RequesterID']) &&
-            is_array($state['saml:RequesterID']) &&
-            isset($state['saml:RequesterID'][0]) &&
-            is_string($state['saml:RequesterID'][0]) &&
-            $state['saml:RequesterID'][0] !== ''
+            isset($state['Destination']['entityid'])
+            && is_array($state['Destination'])
+            && is_string($state['Destination']['entityid'])
+            && $state['Destination']['entityid'] !== ''
         ) {
-            return $state['saml:RequesterID'][0];
+            return $state['Destination']['entityid'];
         }
 
-        if (isset($state['core:SP']) && is_string($state['core:SP']) && $state['core:SP'] !== '') {
-            return $state['core:SP'];
-        }
-
-        throw new \InvalidArgumentException('Missing SP entityID (core:SP or saml:RequesterID[0]).');
+        throw new \InvalidArgumentException('Missing SP entityID (Destination[entityid]).');
     }
 }
