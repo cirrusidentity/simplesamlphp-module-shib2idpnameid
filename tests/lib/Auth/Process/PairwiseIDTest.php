@@ -19,14 +19,12 @@ class PairwiseIDTest extends TestCase
         'Attributes' => [
             'uid' => ['774333']
         ],
-        'Destination' =>
-            [
-                'entityid' => 'https://somesp.edugain.example.edu/sp'
-            ],
-        'Source' =>
-            [
-                'entityid' => 'https://idp.example.edu/shibboleth'
-            ]
+        // Pairwise ID is computed per *directly integrated* SP; in SSP IdP state this is Destination[entityid].
+        'Destination' => [
+            'entityid' => 'https://somesp.edugain.example.edu/sp',
+        ],
+        // Kept only for legacy/back-compat state shape; no longer used for pairwise-id selection.
+        'core:SP' => 'https://somesp.edugain.example.edu/sp',
     ];
 
     public function testNoConfigOptions(): void
@@ -39,8 +37,8 @@ class PairwiseIDTest extends TestCase
         $pairwiseId->process($localState);
 
         $localState = $this->state;
-        unset($localState['Source']);
-        $this->expectExceptionMessage('Missing or invalid Source/entityid in state.');
+        unset($localState['Destination']);
+        $this->expectExceptionMessage('Missing SP entityID (Destination[entityid]).');
         $pairwiseId->process($localState);
     }
 
@@ -77,7 +75,6 @@ class PairwiseIDTest extends TestCase
      */
     public function testPairwiseID(): void
     {
-
         $pairwiseId = new PairwiseID($this->config, null);
         $localState = $this->state;
 
@@ -85,10 +82,10 @@ class PairwiseIDTest extends TestCase
         $this->assertArrayHasKey(PairwiseID::PAIRWISEID_ATTR_NAME, $localState['Attributes']);
         $this->assertStringEndsWith(
             '@example.com',
-            $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]
+            $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0],
         );
 
-        $expectedPairwiseId = 'XEFBRGW7UTQJ6EKRXF6Q4K6FOQG32ZX3@example.com';
+        $expectedPairwiseId = 'B7VDEFQKNFXREJWWRDH3FKXBU4S3YGOY@example.com';
 
         $this->assertEquals($expectedPairwiseId, $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]);
     }
@@ -134,7 +131,7 @@ class PairwiseIDTest extends TestCase
         $actual = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, 'hmac-sha256', $scope);
 
         $this->assertSame(
-        // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
+            // Precalculate the value and hard code it here to avoid any potential changes in the algorithm
             "FYTB5UBFURYSJWUEEP6DHB6BKSLVROK2OHWQKCVLBMSQQW2URWHA@example.org",
             $actual,
             'HMAC-SHA256 pairwise-id mismatch',
@@ -151,7 +148,6 @@ class PairwiseIDTest extends TestCase
      */
     public function testPairwiseIDFailOnEmptyAttribute(): void
     {
-
         $pairwiseId = new PairwiseID($this->config, null);
         $localState = $this->state;
         unset($localState['Attributes']['uid']);
@@ -214,7 +210,7 @@ class PairwiseIDTest extends TestCase
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage("Could not retrieve the required option 'algorithm'");
-        $pairwise = new PairwiseID($config, null);
+        new PairwiseID($config, null);
     }
 
     public function testAlgorithmsProduceDifferentOutputs(): void
@@ -231,5 +227,47 @@ class PairwiseIDTest extends TestCase
         $hmac = $pairwise->generatePairwiseId($attributes, 'uid', $sp, $salt, 'hmac-sha256', $scope);
 
         $this->assertNotSame($sha1, $hmac, 'SHA-1 and HMAC-SHA256 outputs must differ');
+    }
+
+    public function testPairwiseIdChangesWhenDestinationEntityIdChanges(): void
+    {
+        $pairwise = $this->getMockBuilder(PairwiseID::class)
+            ->setConstructorArgs([$this->config, null])
+            ->onlyMethods(['getSecretSalt'])
+            ->getMock();
+
+        $pairwise->method('getSecretSalt')->willReturn('secretsalt');
+
+        $stateOne = $this->state;
+        $stateOne['Destination']['entityid'] = 'https://destination-one.example.org/sp';
+        $pairwise->process($stateOne);
+        $valueOne = $stateOne['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0];
+
+        $stateTwo = $this->state;
+        $stateTwo['Destination']['entityid'] = 'https://destination-two.example.org/sp';
+        $pairwise->process($stateTwo);
+        $valueTwo = $stateTwo['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0];
+
+        $this->assertNotSame($valueOne, $valueTwo, 'Pairwise ID must change when Destination[entityid] changes');
+
+        $expectedOne = $pairwise->generatePairwiseId(
+            ['uid' => ['774333']],
+            'uid',
+            'https://destination-one.example.org/sp',
+            'secretsalt',
+            'sha1',
+            'example.com',
+        );
+        $expectedTwo = $pairwise->generatePairwiseId(
+            ['uid' => ['774333']],
+            'uid',
+            'https://destination-two.example.org/sp',
+            'secretsalt',
+            'sha1',
+            'example.com',
+        );
+
+        $this->assertSame($expectedOne, $valueOne);
+        $this->assertSame($expectedTwo, $valueTwo);
     }
 }
