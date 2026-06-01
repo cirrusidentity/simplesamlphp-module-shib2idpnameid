@@ -31,6 +31,14 @@ class PairwiseID extends ProcessingFilter
 
 
     /**
+     * The attribute to return the pairwise-id to
+     *
+     * @var string
+     */
+    private string $destination;
+
+
+    /**
      * The scope used for pairwise ID generation.
      *
      * @var string|null
@@ -68,6 +76,7 @@ class PairwiseID extends ProcessingFilter
         $moduleConfig = Configuration::loadFromArray($config);
         // Optional attributes
         $this->attribute = $moduleConfig->getOptionalString('attribute', 'eduPersonTargetedID');
+        $this->destination = $moduleConfig->getOptionalString('attributename', self::PAIRWISEID_ATTR_NAME);
         $this->scope = $moduleConfig->getOptionalString('scope', null);
         // Required attribute
         $this->algorithm = $moduleConfig->getString('algorithm');
@@ -103,7 +112,7 @@ class PairwiseID extends ProcessingFilter
         );
 
         /** @psalm-suppress MixedArrayAssignment */
-        $state['Attributes'][self::PAIRWISEID_ATTR_NAME] = [$pairwiseId];
+        $state['Attributes'][$this->destination] = [$pairwiseId];
     }
 
 

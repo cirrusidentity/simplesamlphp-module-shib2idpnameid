@@ -77,19 +77,25 @@ class PairwiseIDTest extends TestCase
      */
     public function testPairwiseID(): void
     {
-        $pairwiseId = new PairwiseID($this->config, null);
+        $pairwiseId = new PairwiseID(
+            array_merge(
+                $this->config,
+                ['attributename' => 'alternateDestination']
+            ),
+            null
+        );
         $localState = $this->state;
 
         $pairwiseId->process($localState);
-        $this->assertArrayHasKey(PairwiseID::PAIRWISEID_ATTR_NAME, $localState['Attributes']);
+        $this->assertArrayHasKey('alternateDestination', $localState['Attributes']);
         $this->assertStringEndsWith(
             '@example.com',
-            $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0],
+            $localState['Attributes']['alternateDestination'][0],
         );
 
         $expectedPairwiseId = 'B7VDEFQKNFXREJWWRDH3FKXBU4S3YGOY@example.com';
 
-        $this->assertEquals($expectedPairwiseId, $localState['Attributes'][PairwiseID::PAIRWISEID_ATTR_NAME][0]);
+        $this->assertEquals($expectedPairwiseId, $localState['Attributes']['alternateDestination'][0]);
     }
 
     public function testGeneratePairwiseIdSha1MatchesReference(): void
